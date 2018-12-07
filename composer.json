@@ -1,0 +1,27 @@
+{
+  "name": "viper/installer",
+  "description": "Viper application installer.",
+  "keywords": [ "viper", "framework", "installer" ],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Michael Noël",
+      "email": "mike@viperframe.work"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Viper\\Installer\\Console\\": "src/"
+    }
+  },
+  "require": {
+    "ext-zip": "*",
+    "guzzlehttp/guzzle": "~6.0",
+    "symfony/console": "~3.0|~4.0",
+    "symfony/filesystem": "~3.0|~4.0",
+    "symfony/process": "~3.0|~4.0"
+  },
+  "bin": [
+    "viper"
+  ]
+}
