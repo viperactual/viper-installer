@@ -20,7 +20,7 @@ class NewCommand extends Command {
      * @access protected
      * @var    string $download_url  The URL to download Zip files
      */
-    protected $download_url = 'https://viperframe.work/download/';
+    protected $download_url = 'https://www.viperframe.work/download/';
 
     /**
      * Configure the command options.
