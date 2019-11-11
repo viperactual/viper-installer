@@ -2,7 +2,9 @@
 
 ---
 
-## Composer
+## Install
+
+### Composer
 
 We recommend this command for linux based web servers.
 
@@ -16,7 +18,11 @@ Recommended that you install it globally for development environments.
 composer global require viper/installer
 ```
 
-## New Project
+### Authorization
+
+@todo Implement Viper Lab credentials...
+
+### New Project
 
 Once installed, the `viper new` command will create a fresh Viper installation 
 in the directory you specify. For instance, `viper new blog` will create a directory 
@@ -30,6 +36,3 @@ viper new blog
 ```
 composer create-project --prefer-dist viper/viper blog
 ```
-
-
-
