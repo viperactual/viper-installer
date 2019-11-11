@@ -5,6 +5,7 @@ namespace Viper\Installer\Console;
 use ZipArchive;
 use RuntimeException;
 use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\Request;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Console\Command\Command;
@@ -14,13 +15,36 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 
-class NewCommand extends Command {
+/**
+ * Viper Installer New Command Class.
+ *
+ * @package      ViperInstaller
+ * @category     Base
+ * @name         NewCommand
+ * @author       Michael Noël <mike@viperframe.work>
+ * @copyright    (c) 2020 Viper framework
+ * @license      http://viperframe.work/license
+ */
+
+class NewCommand extends Command
+{
+    /**
+     * @access protected
+     * @var    object $client  Http client instance
+     */
+    protected $client = null;
 
     /**
      * @access protected
      * @var    string $download_url  The URL to download Zip files
      */
-    protected $download_url = 'https://www.viperframe.work/download/';
+    protected $download_url = 'https://get.viperframe.work/';
+
+    /**
+     * @access protected
+     * @var    array $env  Environment file
+     */
+    protected $env = [];
 
     /**
      * Configure the command options.
@@ -30,13 +54,36 @@ class NewCommand extends Command {
      */
     protected function configure()
     {
+        $this->parseEnvironmentFile();
+
         $this
             ->setName('new')
             ->setDescription('Create a new Viper application.')
             ->addArgument('name', InputArgument::OPTIONAL)
             ->addOption('dev', null, InputOption::VALUE_NONE, 'Installs the latest "development" release')
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists');
-    } // End Method
+    }
+
+    /**
+     * Parse Environment File.
+     *
+     * @access protected
+     * @return void
+     */
+    protected function parseEnvironmentFile()
+    {
+        $data = [];
+
+        $file = APP_BASE . DIRECTORY_SEPARATOR . '.env';
+
+        if (is_file($file)) {
+            $data = parse_ini_file($file, true);
+        } else {
+            throw new RuntimeException('Cannot find or parse .env file. Check for corruption and please try again.');
+        }
+
+        $this->env = $data;
+    }
 
     /**
      * Execute the command.
@@ -48,60 +95,63 @@ class NewCommand extends Command {
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        if ( ! class_exists('ZipArchive'))
-        {
+        if (empty($this->env)) {
+            throw new RuntimeException('You must supply an environmnet .env file. Please try again.');
+        }
+
+        if (! extension_loaded('zip')) {
             throw new RuntimeException('The Zip PHP extension is not installed. Please install it and try again.');
-        } // End If
+        }
 
-        $directory = ($input->getArgument('name')) ? getcwd().'/'.$input->getArgument('name') : getcwd();
+        $name = $input->getArgument('name');
 
-        if ( ! $input->getOption('force'))
-        {
+        $directory = $name && $name !== '.' ? getcwd() . '/' . $name : getcwd();
+
+        if (! $input->getOption('force')) {
             $this->verifyApplicationDoesntExist($directory);
-        } // End If
+        }
 
-        $output->writeln('<info>Crafting application...</info>');
+        $output->writeln('<info>Creating application...</info>');
 
-        $version = $this->getVersion($input);
-
-        $this->download($zipFile = $this->makeFilename(), $version)
-             ->extract($zipFile, $directory)
-             ->prepareWritableDirectories($directory, $output)
-             ->cleanUp($zipFile);
+        $this
+            ->download($zipFile = $this->makeFilename(), $this->getVersion($input))
+            ->extract($zipFile, $directory)
+            ->prepareWritableDirectories($directory, $output)
+            ->cleanUp($zipFile);
 
         $composer = $this->findComposer();
 
         $commands = [
-            $composer.' install --no-scripts',
-            $composer.' run-script post-root-package-install',
-            $composer.' run-script post-create-project-cmd',
-            $composer.' run-script post-autoload-dump',
+            $composer . ' install --no-scripts',
+            $composer . ' run-script post-root-package-install',
+            $composer . ' run-script post-create-project-cmd',
+            $composer . ' run-script post-autoload-dump',
         ];
 
-        if ($input->getOption('no-ansi'))
-        {
-            $commands = array_map(
-                function ($value)
-                {
-                    return $value.' --no-ansi';
-                }, $commands);
-        } // End If
+        if ($input->getOption('no-ansi')) {
+            $commands = array_map(function ($value) {
+                return $value . ' --no-ansi';
+            }, $commands);
+        }
+
+        if ($input->getOption('quiet')) {
+            $commands = array_map(function ($value) {
+                return $value . ' --quiet';
+            }, $commands);
+        }
 
         $process = new Process(implode(' && ', $commands), $directory, null, null, null);
 
-        if ('\\' !== DIRECTORY_SEPARATOR && file_exists('/dev/tty') && is_readable('/dev/tty'))
-        {
+        if ('\\' !== DIRECTORY_SEPARATOR && file_exists('/dev/tty') && is_readable('/dev/tty')) {
             $process->setTty(true);
-        } // End If
+        }
 
-        $process->run(
-            function ($type, $line) use ($output)
-            {
-                $output->write($line);
-            });
+        $process->run(function ($type, $line) use ($output) {
+            $output->write($line);
+        });
 
-        $output->writeln('<comment>Application ready! Build something amazing.</comment>');
-    } // End Method
+        $output->writeln('<comment>Application ready!</comment>');
+    }
 
     /**
      * Verify that the application does not already exist.
@@ -112,11 +162,10 @@ class NewCommand extends Command {
      */
     protected function verifyApplicationDoesntExist($directory)
     {
-        if ((is_dir($directory) || is_file($directory)) && $directory != getcwd())
-        {
+        if ((is_dir($directory) || is_file($directory)) && $directory != getcwd()) {
             throw new RuntimeException('Application already exists!');
-        } // End If
-    } // End Method
+        }
+    }
 
     /**
      * Generate a random temporary filename.
@@ -126,11 +175,14 @@ class NewCommand extends Command {
      */
     protected function makeFilename()
     {
-        return getcwd().'/viper_'.md5(time().uniqid()).'.zip';
-    } // End Method
+        return getcwd() . '/viper_' . md5(time() . uniqid()) . '.zip';
+    }
 
     /**
      * Download the temporary Zip to the given file.
+     *
+     * @todo
+     *  Implement into Viper Lab with authorization.
      *
      * @access protected
      * @param  string $zipFile  Zip file
@@ -139,22 +191,18 @@ class NewCommand extends Command {
      */
     protected function download($zipFile, $version = 'master')
     {
-        switch ($version)
-        {
-            case ('develop'):
-                $filename = 'framework-develop.zip';
-                break;
-            case ('master'): default:
-                $filename = 'framework-master.zip';
-                break;
-        } // End Switch
+        $url = 'https://viper-lab.com/api/v4/projects/viper%2Fviper/repository/archive.zip?sha=' . $version;
 
-        $response = (new Client)->get("{$this->download_url}{$filename}");
+        $response = (new Client)->get($url, [
+            'headers' => [
+                'PRIVATE-TOKEN' => $this->env['private_token'],
+            ],
+        ]);
 
         file_put_contents($zipFile, $response->getBody());
 
         return $this;
-    } // End Method
+    }
 
     /**
      * Extract the Zip file into the given directory.
@@ -168,17 +216,76 @@ class NewCommand extends Command {
     {
         $archive = new ZipArchive;
 
-        $archive->open($zipFile);
+        $response = $archive->open($zipFile, ZipArchive::CHECKCONS);
+
+        if ($response === ZipArchive::ER_NOZIP) {
+            throw new RuntimeException('The zip file could not download. Verify that you are able to access: Viper Lab');
+        }
 
         $archive->extractTo($directory);
 
+        $index = $archive->statIndex(0);
+        $parent = $index['name'];
+
+        for ($i = 1; $i < $archive->numFiles; $i++) {
+            $stat = $archive->statIndex($i);
+
+            $file = str_replace($parent, '', $stat['name']);
+
+            $origin = $directory . DIRECTORY_SEPARATOR . $parent . $file;
+            $target = $directory . DIRECTORY_SEPARATOR . $file;
+
+            $this->copyr($origin, $target);
+        }
+
         $archive->close();
 
+        $filesystem = new Filesystem;
+
+        $filesystem->remove($directory . DIRECTORY_SEPARATOR . $parent);
+
         return $this;
-    } // End Method
+    }
 
     /**
-     * Clean-up the Zip file.
+     * Copy Recursively.
+     *
+     * @access protected
+     * @param  mixed $origin  Path to the origin
+     * @param  mixed $target  Path to the target
+     * @return bool
+     */
+    protected function copyr($origin, $target)
+    {
+        if (is_link($origin)) {
+            return @symlink(readlink($origin), $target);
+        }
+
+        if (is_file($origin)) {
+            return @copy($origin, $target);
+        }
+
+        if (! is_dir($target)) {
+            @mkdir($target);
+        }
+
+        $dir = dir($origin);
+
+        while (false !== $entry = $dir->read()) {
+            if ($entry == '.' || $entry == '..') {
+                continue;
+            }
+
+            $this->copyr($origin . '/' . $entry, $target . '/' . $entry);
+        }
+
+        $dir->close();
+
+        return true;
+    }
+
+    /**
+     * Clean Up the Zip file.
      *
      * @access protected
      * @param  string $zipFile  Zip file
@@ -191,7 +298,7 @@ class NewCommand extends Command {
         @unlink($zipFile);
 
         return $this;
-    } // End Method
+    }
 
     /**
      * Make sure the storage and bootstrap cache directories are writable.
@@ -205,18 +312,17 @@ class NewCommand extends Command {
     {
         $filesystem = new Filesystem;
 
-        try
-        {
-            $filesystem->chmod($appDirectory.DIRECTORY_SEPARATOR."storage/cache", 0755, 0000, true);
-            $filesystem->chmod($appDirectory.DIRECTORY_SEPARATOR."storage/logs", 0755, 0000, true);
+        try {
+            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'bootstrap/cache', 0755, 0000, true);
+            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'storage/cache', 0755, 0000, true);
+            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'storage/logs', 0755, 0000, true);
         }
-        catch (IOExceptionInterface $e)
-        {
-            $output->writeln('<comment>You should verify that the "storage/cache" and "storage/logs" directories are writable.</comment>');
-        } // End Try
+        catch (IOExceptionInterface $e) {
+            $output->writeln('<comment>You should verify that the "storage/cache", "storage/logs" and "bootstrap/cache" directories are writable.</comment>');
+        }
 
         return $this;
-    } // End Method
+    }
 
     /**
      * Get the version that should be downloaded.
@@ -230,24 +336,24 @@ class NewCommand extends Command {
         if ($input->getOption('dev'))
         {
             return 'develop';
-        } // End If
+        }
 
         return 'master';
-    } // End Method
+    }
 
     /**
      * Get the composer command for the environment.
      *
+     * @access protected
      * @return string
      */
     protected function findComposer()
     {
-        if (file_exists(getcwd().'/composer.phar'))
+        if (file_exists(getcwd() . '/composer.phar'))
         {
-            return '"'.PHP_BINARY.'" composer.phar';
-        } // End If
+            return '"' . PHP_BINARY . '" composer.phar';
+        }
 
         return 'composer';
-    } // End Method
-
-} // End Class
+    }
+}
