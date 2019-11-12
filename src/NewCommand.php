@@ -5,7 +5,6 @@ namespace Viper\Installer\Console;
 use ZipArchive;
 use RuntimeException;
 use GuzzleHttp\Client;
-use GuzzleHttp\Psr7\Request;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Console\Command\Command;
@@ -28,12 +27,6 @@ use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 
 class NewCommand extends Command
 {
-    /**
-     * @access protected
-     * @var    array $env  Environment file
-     */
-    protected $env = [];
-
     /**
      * Configure the command options.
      *
@@ -270,9 +263,12 @@ class NewCommand extends Command
         $filesystem = new Filesystem;
 
         try {
-            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'bootstrap/cache', 0755, 0000, true);
-            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'storage/cache', 0755, 0000, true);
-            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'storage/logs', 0755, 0000, true);
+            $filesystem->mkdir($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/cache', 0755);
+            $filesystem->mkdir($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/logs', 0755);
+
+            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'app/bootstrap/cache', 0755, 0000, true);
+            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/cache', 0755, 0000, true);
+            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/logs', 0755, 0000, true);
         }
         catch (IOExceptionInterface $e) {
             $output->writeln('<comment>You should verify that the "storage/cache", "storage/logs" and "bootstrap/cache" directories are writable.</comment>');
