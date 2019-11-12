@@ -30,18 +30,6 @@ class NewCommand extends Command
 {
     /**
      * @access protected
-     * @var    object $client  Http client instance
-     */
-    protected $client = null;
-
-    /**
-     * @access protected
-     * @var    string $download_url  The URL to download Zip files
-     */
-    protected $download_url = 'https://get.viperframe.work/';
-
-    /**
-     * @access protected
      * @var    array $env  Environment file
      */
     protected $env = [];
@@ -54,35 +42,12 @@ class NewCommand extends Command
      */
     protected function configure()
     {
-        $this->parseEnvironmentFile();
-
         $this
             ->setName('new')
             ->setDescription('Create a new Viper application.')
             ->addArgument('name', InputArgument::OPTIONAL)
             ->addOption('dev', null, InputOption::VALUE_NONE, 'Installs the latest "development" release')
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists');
-    }
-
-    /**
-     * Parse Environment File.
-     *
-     * @access protected
-     * @return void
-     */
-    protected function parseEnvironmentFile()
-    {
-        $data = [];
-
-        $file = APP_BASE . DIRECTORY_SEPARATOR . '.env';
-
-        if (is_file($file)) {
-            $data = parse_ini_file($file, true);
-        } else {
-            throw new RuntimeException('Cannot find or parse .env file. Check for corruption and please try again.');
-        }
-
-        $this->env = $data;
     }
 
     /**
@@ -95,10 +60,6 @@ class NewCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        if (empty($this->env)) {
-            throw new RuntimeException('You must supply an environmnet .env file. Please try again.');
-        }
-
         if (! extension_loaded('zip')) {
             throw new RuntimeException('The Zip PHP extension is not installed. Please install it and try again.');
         }
@@ -193,11 +154,7 @@ class NewCommand extends Command
     {
         $url = 'https://viper-lab.com/api/v4/projects/viper%2Fviper/repository/archive.zip?sha=' . $version;
 
-        $response = (new Client)->get($url, [
-            'headers' => [
-                'PRIVATE-TOKEN' => $this->env['private_token'],
-            ],
-        ]);
+        $response = (new Client)->get($url);
 
         file_put_contents($zipFile, $response->getBody());
 
