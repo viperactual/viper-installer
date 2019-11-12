@@ -27,6 +27,8 @@ use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 
 class NewCommand extends Command
 {
+    private $private_token = null;
+
     /**
      * Configure the command options.
      *
@@ -40,7 +42,8 @@ class NewCommand extends Command
             ->setDescription('Create a new Viper application.')
             ->addArgument('name', InputArgument::OPTIONAL)
             ->addOption('dev', null, InputOption::VALUE_NONE, 'Installs the latest "development" release')
-            ->addOption('force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists');
+            ->addOption('force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists')
+            ->addOption('token', 't', InputOption::VALUE_NONE, 'Add your private token for Viper Lab');
     }
 
     /**
@@ -66,6 +69,10 @@ class NewCommand extends Command
         }
 
         $output->writeln('<info>Creating application...</info>');
+
+        if ($token = $input->getOption('token')) {
+            $this->private_token = $token;
+        }
 
         $this
             ->download($zipFile = $this->makeFilename(), $this->getVersion($input))
@@ -137,9 +144,6 @@ class NewCommand extends Command
     /**
      * Download the temporary Zip to the given file.
      *
-     * @todo
-     *  Implement into Viper Lab with authorization.
-     *
      * @access protected
      * @param  string $zipFile  Zip file
      * @param  string $version  Version
@@ -149,7 +153,17 @@ class NewCommand extends Command
     {
         $url = 'https://viper-lab.com/api/v4/projects/viper%2Fviper/repository/archive.zip?sha=' . $version;
 
-        $response = (new Client)->get($url);
+        $options = [];
+
+        if ($this->private_token != null) {
+            $options = [
+                'headers' => [
+                    'PRIVATE-TOKEN' => $this->private_token,
+                ],
+            ];
+        }
+
+        $response = (new Client)->get($url, $options);
 
         file_put_contents($zipFile, $response->getBody());
 
@@ -267,9 +281,7 @@ class NewCommand extends Command
         try {
             $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'r2d2', 0775, 0000, true);
             $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'r2d2d', 0775, 0000, true);
-
-        }
-        catch (IOExceptionInterface $e) {
+        } catch (IOExceptionInterface $e) {
             $output->writeln('<comment>R2d2 powered on.</comment>');
         }
 
@@ -291,8 +303,7 @@ class NewCommand extends Command
         try {
             $filesystem->mkdir($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/logs', 0755);
             $filesystem->mkdir($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/cache', 0755);
-        }
-        catch (IOExceptionInterface $e) {
+        } catch (IOExceptionInterface $e) {
             $output->writeln('<comment>You should verify that the "storage/cache", "storage/logs" directories have been created.</comment>');
         }
 
@@ -315,8 +326,7 @@ class NewCommand extends Command
             $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/logs', 0755, 0000, true);
             $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/cache', 0755, 0000, true);
             $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'app/bootstrap/cache', 0755, 0000, true);
-        }
-        catch (IOExceptionInterface $e) {
+        } catch (IOExceptionInterface $e) {
             $output->writeln('<comment>You should verify that the "storage/cache", "storage/logs" and "bootstrap/cache" directories are writable.</comment>');
         }
 
@@ -332,8 +342,7 @@ class NewCommand extends Command
      */
     protected function getVersion(InputInterface $input)
     {
-        if ($input->getOption('dev'))
-        {
+        if ($input->getOption('dev')) {
             return 'develop';
         }
 
@@ -348,8 +357,7 @@ class NewCommand extends Command
      */
     protected function findComposer()
     {
-        if (file_exists(getcwd() . '/composer.phar'))
-        {
+        if (file_exists(getcwd() . '/composer.phar')) {
             return '"' . PHP_BINARY . '" composer.phar';
         }
 
