@@ -70,7 +70,9 @@ class NewCommand extends Command
         $this
             ->download($zipFile = $this->makeFilename(), $this->getVersion($input))
             ->extract($zipFile, $directory)
+            ->prepareStorageDirectories($directory, $output)
             ->prepareWritableDirectories($directory, $output)
+            ->prepareR2d2($directory, $output)
             ->cleanUp($zipFile);
 
         $composer = $this->findComposer();
@@ -251,11 +253,58 @@ class NewCommand extends Command
     }
 
     /**
+     * Prepare R2d2 Files.
+     *
+     * @access protected
+     * @param  string          $appDirectory  The application directory
+     * @param  OutputInterface $output        Console output
+     * @return NewCommand
+     */
+    protected function prepareR2d2($appDirectory, OutputInterface $output)
+    {
+        $filesystem = new Filesystem;
+
+        try {
+            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'r2d2', 0775, 0000, true);
+            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'r2d2d', 0775, 0000, true);
+
+        }
+        catch (IOExceptionInterface $e) {
+            $output->writeln('<comment>R2d2 powered on.</comment>');
+        }
+
+        return $this;
+    }
+
+    /**
+     * Prepare Storage Directories.
+     *
+     * @access protected
+     * @param  string          $appDirectory  The application directory
+     * @param  OutputInterface $output        Console output
+     * @return NewCommand
+     */
+    protected function prepareStorageDirectories($appDirectory, OutputInterface $output)
+    {
+        $filesystem = new Filesystem;
+
+        try {
+            $filesystem->mkdir($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/logs', 0755);
+            $filesystem->mkdir($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/cache', 0755);
+        }
+        catch (IOExceptionInterface $e) {
+            $output->writeln('<comment>You should verify that the "storage/cache", "storage/logs" directories have been created.</comment>');
+        }
+
+        return $this;
+    }
+
+    /**
      * Make sure the storage and bootstrap cache directories are writable.
      *
      * @access protected
-     * @param  string                                            $appDirectory  The application directory
-     * @param  \Symfony\Component\Console\Output\OutputInterface $output        Console output
+     * @param  string          $appDirectory  The application directory
+     * @param  OutputInterface $output        Console output
      * @return NewCommand
      */
     protected function prepareWritableDirectories($appDirectory, OutputInterface $output)
@@ -263,12 +312,9 @@ class NewCommand extends Command
         $filesystem = new Filesystem;
 
         try {
-            $filesystem->mkdir($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/cache', 0755);
-            $filesystem->mkdir($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/logs', 0755);
-
-            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'app/bootstrap/cache', 0755, 0000, true);
-            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/cache', 0755, 0000, true);
             $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/logs', 0755, 0000, true);
+            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'app/storage/cache', 0755, 0000, true);
+            $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'app/bootstrap/cache', 0755, 0000, true);
         }
         catch (IOExceptionInterface $e) {
             $output->writeln('<comment>You should verify that the "storage/cache", "storage/logs" and "bootstrap/cache" directories are writable.</comment>');
