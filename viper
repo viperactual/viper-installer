@@ -9,7 +9,7 @@ if (file_exists(__DIR__ . '/../../autoload.php')) {
     require __DIR__ . '/vendor/autoload.php';
 }
 
-$app = new Symfony\Component\Console\Application('Viper Installer', '2.2.4');
+$app = new Symfony\Component\Console\Application('Viper Installer', '2.2.5');
 $app->add(new Viper\Installer\Console\NewCommand);
 
 $app->run();

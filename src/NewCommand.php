@@ -27,6 +27,10 @@ use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 
 class NewCommand extends Command
 {
+    /**
+     * @access private
+     * @var    string|null $private_token  Viper Lab personal access token
+     */
     private $private_token = null;
 
     /**
@@ -43,7 +47,7 @@ class NewCommand extends Command
             ->addArgument('name', InputArgument::OPTIONAL)
             ->addOption('dev', null, InputOption::VALUE_NONE, 'Installs the latest "development" release')
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists')
-            ->addOption('token', 't', InputOption::VALUE_NONE, 'Add your private token for Viper Lab');
+            ->addOption('token', 't', InputOption::VALUE_REQUIRED, 'Add your private token for Viper Lab');
     }
 
     /**
@@ -68,11 +72,9 @@ class NewCommand extends Command
             $this->verifyApplicationDoesntExist($directory);
         }
 
-        $output->writeln('<info>Creating application...</info>');
+        $this->private_token = ($input->getOption('token')) ?? null;
 
-        if ($token = $input->getOption('token')) {
-            $this->private_token = $token;
-        }
+        $output->writeln('<info>Installing application, please wait...</info>');
 
         $this
             ->download($zipFile = $this->makeFilename(), $this->getVersion($input))
