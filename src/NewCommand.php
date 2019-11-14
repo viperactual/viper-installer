@@ -240,7 +240,7 @@ class NewCommand extends Command
         $dir = dir($origin);
 
         while (false !== $entry = $dir->read()) {
-            if ($entry == '.' || $entry == '..') {
+            if ($entry === '.' || $entry === '..') {
                 continue;
             }
 
