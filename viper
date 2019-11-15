@@ -3,13 +3,16 @@
 
 define('APP_BASE', __DIR__);
 
-if (file_exists(__DIR__ . '/../../autoload.php')) {
-    require __DIR__ . '/../../autoload.php';
+if (file_exists(APP_BASE . '/../../autoload.php')) {
+    require APP_BASE . '/../../autoload.php';
 } else {
-    require __DIR__ . '/vendor/autoload.php';
+    require APP_BASE . '/vendor/autoload.php';
 }
 
-$app = new Symfony\Component\Console\Application('Viper Installer', '2.2.7');
-$app->add(new Viper\Installer\Console\NewCommand);
+use Viper\Installer\Console\NewCommand;
+use Symfony\Component\Console\Application;
+
+$app = new Application(NewCommand::NAME, NewCommand::VERSION);
+$app->add(new NewCommand);
 
 $app->run();
