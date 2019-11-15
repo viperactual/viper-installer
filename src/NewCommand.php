@@ -27,6 +27,9 @@ use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 
 class NewCommand extends Command
 {
+    const NAME = 'Viper Installer';
+    const VERSION = '2.2.8';
+
     /**
      * @access private
      * @var    string|null $private_token  Viper Lab personal access token
@@ -153,7 +156,7 @@ class NewCommand extends Command
      */
     protected function download($zipFile, $version = 'master')
     {
-        $url = 'https://viper-lab.com/api/v4/projects/viper%2Fviper/repository/archive.zip?sha=' . $version;
+        $url = 'https://viper-lab.com/api/v4/projects/viper%2Fapp/repository/archive.zip?sha=' . $version;
 
         $options = [];
 
@@ -284,7 +287,7 @@ class NewCommand extends Command
             $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'r2d2', 0775, 0000, true);
             $filesystem->chmod($appDirectory . DIRECTORY_SEPARATOR . 'r2d2d', 0775, 0000, true);
         } catch (IOExceptionInterface $e) {
-            $output->writeln('<comment>R2d2 powered on.</comment>');
+            $output->writeln('<comment>R2d2 Powered on.</comment>');
         }
 
         return $this;
