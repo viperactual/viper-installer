@@ -20,19 +20,41 @@ composer global require viper/installer
 
 ### Authorization
 
-@todo Implement Viper Lab credentials...
+Coming soon. For more information, please visit [Viper Lab](http://www.viper-lab.com).
 
 ### New Project
 
 Once installed, the `viper new` command will create a fresh Viper installation 
-in the directory you specify. For instance, `viper new blog` will create a directory 
-named `blog` containing a fresh Viper installation with all of Viper's dependencies 
+in the directory you specify. For instance, `viper new api` will create a directory 
+named `api` containing a fresh Viper installation with all of Viper's dependencies 
 already installed:
 
+#### Linux
+
 ```
-viper new blog
+viper new api
 ```
 
 ```
-composer create-project --prefer-dist viper/viper blog
+composer create-project --prefer-dist viper/viper api
+```
+
+#### Windows
+
+If you are planning on installing Viper's dependencies on a Windows OS running locally,
+then you may have to provided a few extra steps.
+
+1. Create new `api` project directory.
+
+```
+viper new api
+```
+
+2. Followed by running these commands in order.
+
+```
+composer install --no-scripts
+composer run-script post-root-package-install
+composer run-script post-create-project-cmd
+composer run-script post-autoload-dump
 ```
