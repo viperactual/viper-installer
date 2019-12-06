@@ -28,7 +28,7 @@ use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 class NewCommand extends Command
 {
     const NAME = 'Viper Installer';
-    const VERSION = '2.2.8';
+    const VERSION = '2.2.9';
 
     /**
      * @access private
