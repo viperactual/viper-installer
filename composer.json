@@ -9,19 +9,39 @@
       "email": "mike@viperframe.work"
     }
   ],
+  "require": {
+    "php": "^7.2.9",
+    "ext-zip": "*",
+    "guzzlehttp/guzzle": "^6.0",
+    "symfony/console": "^4.0|^5.0",
+    "symfony/filesystem": "^4.0|^5.0",
+    "symfony/process": "^4.2|^5.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^8.0"
+  },
+
+  "bin": [
+    "bin/viper"
+  ],
   "autoload": {
     "psr-4": {
       "Viper\\Installer\\Console\\": "src/"
     }
   },
-  "require": {
-    "ext-zip": "*",
-    "guzzlehttp/guzzle": "~6.0",
-    "symfony/console": "~3.0|~4.0",
-    "symfony/filesystem": "~3.0|~4.0",
-    "symfony/process": "~3.0|~4.0"
+  "autoload-dev": {
+    "psr-4": {
+      "Viper\\Installer\\Console\\Tests\\": "tests/"
+    }
   },
-  "bin": [
-    "viper"
-  ]
+  "extra": {
+    "branch-alias": {
+      "dev-master": "3.x-dev"
+    }
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
 }
