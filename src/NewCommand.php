@@ -28,7 +28,7 @@ use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 class NewCommand extends Command
 {
     const NAME = 'Viper Installer';
-    const VERSION = '2.2.9';
+    const VERSION = '3.0.0';
 
     /**
      * @access private
@@ -50,6 +50,7 @@ class NewCommand extends Command
             ->addArgument('name', InputArgument::OPTIONAL)
             ->addOption('dev', null, InputOption::VALUE_NONE, 'Installs the latest "development" release')
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists')
+            ->addOption('auth', null, InputOption::VALUE_NONE, 'Installs the Viper authentication scaffolding')
             ->addOption('token', 't', InputOption::VALUE_REQUIRED, 'Add your private token for Viper Lab');
     }
 
@@ -59,9 +60,9 @@ class NewCommand extends Command
      * @access protected
      * @param  \Symfony\Component\Console\Input\InputInterface   $input   User input
      * @param  \Symfony\Component\Console\Output\OutputInterface $output  Output
-     * @return void
+     * @return integer
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if (! extension_loaded('zip')) {
             throw new RuntimeException('The Zip PHP extension is not installed. Please install it and try again.');
@@ -108,7 +109,7 @@ class NewCommand extends Command
             }, $commands);
         }
 
-        $process = new Process(implode(' && ', $commands), $directory, null, null, null);
+        $process = Process::fromShellCommandline(implode(' && ', $commands), $directory, null, null, null);
 
         if ('\\' !== DIRECTORY_SEPARATOR && file_exists('/dev/tty') && is_readable('/dev/tty')) {
             $process->setTty(true);
@@ -118,7 +119,11 @@ class NewCommand extends Command
             $output->write($line);
         });
 
-        $output->writeln('<comment>Application ready!</comment>');
+        if ($process->isSuccessful()) {
+            $output->writeln('<comment>Application ready!</comment>');
+        }
+
+        return 0;
     }
 
     /**
@@ -141,7 +146,7 @@ class NewCommand extends Command
      * @access protected
      * @return string
      */
-    protected function makeFilename()
+    protected function makeFilename(): string
     {
         return getcwd() . '/viper_' . md5(time() . uniqid()) . '.zip';
     }
@@ -154,8 +159,20 @@ class NewCommand extends Command
      * @param  string $version  Version
      * @return NewCommand
      */
-    protected function download($zipFile, $version = 'master')
+    protected function download($zipFile, $version = 'master'): NewCommand
     {
+        //switch ($version) {
+        //    case 'develop':
+        //        $version = 'latest-develop.zip';
+        //        break;
+        //    case 'auth':
+        //        $version = 'latest-auth.zip';
+        //        break;
+        //    case 'master':
+        //        $version = 'latest.zip';
+        //        break;
+        //}
+
         $url = 'https://viper-lab.com/api/v4/projects/viper%2Fapp/repository/archive.zip?sha=' . $version;
 
         $options = [];
@@ -183,7 +200,7 @@ class NewCommand extends Command
      * @param  string $directory  Destination directory
      * @return NewCommand
      */
-    protected function extract($zipFile, $directory)
+    protected function extract($zipFile, $directory): NewCommand
     {
         $archive = new ZipArchive;
 
@@ -226,7 +243,7 @@ class NewCommand extends Command
      * @param  mixed $target  Path to the target
      * @return bool
      */
-    protected function copyr($origin, $target)
+    protected function copyr($origin, $target): bool
     {
         if (is_link($origin)) {
             return @symlink(readlink($origin), $target);
@@ -262,7 +279,7 @@ class NewCommand extends Command
      * @param  string $zipFile  Zip file
      * @return NewCommand
      */
-    protected function cleanUp($zipFile)
+    protected function cleanUp($zipFile): NewCommand
     {
         @chmod($zipFile, 0777);
 
@@ -279,7 +296,7 @@ class NewCommand extends Command
      * @param  OutputInterface $output        Console output
      * @return NewCommand
      */
-    protected function prepareR2d2($appDirectory, OutputInterface $output)
+    protected function prepareR2d2($appDirectory, OutputInterface $output): NewCommand
     {
         $filesystem = new Filesystem;
 
@@ -301,7 +318,7 @@ class NewCommand extends Command
      * @param  OutputInterface $output        Console output
      * @return NewCommand
      */
-    protected function prepareStorageDirectories($appDirectory, OutputInterface $output)
+    protected function prepareStorageDirectories($appDirectory, OutputInterface $output): NewCommand
     {
         $filesystem = new Filesystem;
 
@@ -323,7 +340,7 @@ class NewCommand extends Command
      * @param  OutputInterface $output        Console output
      * @return NewCommand
      */
-    protected function prepareWritableDirectories($appDirectory, OutputInterface $output)
+    protected function prepareWritableDirectories($appDirectory, OutputInterface $output): NewCommand
     {
         $filesystem = new Filesystem;
 
@@ -345,10 +362,14 @@ class NewCommand extends Command
      * @param  \Symfony\Component\Console\Input\InputInterface $input  Console input
      * @return string
      */
-    protected function getVersion(InputInterface $input)
+    protected function getVersion(InputInterface $input): string
     {
         if ($input->getOption('dev')) {
             return 'develop';
+        }
+
+        if ($input->getOption('auth')) {
+            return 'auth';
         }
 
         return 'master';
@@ -360,10 +381,12 @@ class NewCommand extends Command
      * @access protected
      * @return string
      */
-    protected function findComposer()
+    protected function findComposer(): string
     {
-        if (file_exists(getcwd() . '/composer.phar')) {
-            return '"' . PHP_BINARY . '" composer.phar';
+        $composerPath = getcwd() . '/composer.phar';
+
+        if (file_exists($composerPath)) {
+            return '"' . PHP_BINARY . '" ' . $composerPath;
         }
 
         return 'composer';
