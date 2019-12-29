@@ -28,7 +28,7 @@ use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 class NewCommand extends Command
 {
     const NAME = 'Viper Installer';
-    const VERSION = '3.0.0';
+    const VERSION = '3.0.1';
 
     /**
      * @access private
@@ -47,8 +47,9 @@ class NewCommand extends Command
         $this
             ->setName('new')
             ->setDescription('Create a new Viper application.')
-            ->addArgument('name', InputArgument::OPTIONAL)
+            ->addArgument('name', InputArgument::OPTIONAL, 'App, Docker or Vagrant')
             ->addOption('dev', null, InputOption::VALUE_NONE, 'Installs the latest "development" release')
+            ->addOption('slim', '-s', InputOption::VALUE_NONE, 'Installs the slim version of Docker')
             ->addOption('force', 'f', InputOption::VALUE_NONE, 'Forces install even if the directory already exists')
             ->addOption('auth', null, InputOption::VALUE_NONE, 'Installs the Viper authentication scaffolding')
             ->addOption('token', 't', InputOption::VALUE_REQUIRED, 'Add your private token for Viper Lab');
@@ -68,6 +69,101 @@ class NewCommand extends Command
             throw new RuntimeException('The Zip PHP extension is not installed. Please install it and try again.');
         }
 
+        $this->private_token = ($input->getOption('token')) ?? null;
+
+        $name = $input->getArgument('name');
+
+        switch ($name) {
+            case ('docker'):
+                $method = 'installDocker';
+                break;
+            case ('vagrant'):
+                $method = 'installVagrant';
+                break;
+            default:
+                $method = 'installViper';
+                break;
+        }
+
+        $this->$method($input, $output);
+
+        return 0;
+    }
+
+    /**
+     * Install Docker.
+     *
+     * @access protected
+     * @param  InputInterface  $input
+     * @param  OutputInterface $output
+     * @return void
+     */
+    protected function installDocker(InputInterface $input, OutputInterface $output)
+    {
+        $name = $input->getArgument('name');
+
+        $directory = getcwd() . DIRECTORY_SEPARATOR . $name;
+
+        if (! $input->getOption('force')) {
+            $this->verifyApplicationDoesntExist($directory);
+        }
+
+        if ($input->getOption('slim')) {
+            $package = 'Docker Slim';
+            $project = 'viper%2Fdocker-slim';
+        } else {
+            $package = 'Docker';
+            $project = 'viper%2Fdocker';
+        }
+
+        $output->writeln('<info>Installing ' . $package . ', please wait...</info>');
+
+        $this
+            ->download($project, $zipFile = $this->makeFilename(), $this->getVersion($input))
+            ->extract($zipFile, $directory)
+            ->cleanUp($zipFile);
+
+        $commands = [
+            'cp -rp env-example .env',
+        ];
+
+        if ($input->getOption('no-ansi')) {
+            $commands = array_map(function ($value) {
+                return $value . ' --no-ansi';
+            }, $commands);
+        }
+
+        if ($input->getOption('quiet')) {
+            $commands = array_map(function ($value) {
+                return $value . ' --quiet';
+            }, $commands);
+        }
+
+        $process = Process::fromShellCommandline(implode(' && ', $commands), $directory, null, null, null);
+
+        if ('\\' !== DIRECTORY_SEPARATOR && file_exists('/dev/tty') && is_readable('/dev/tty')) {
+            $process->setTty(true);
+        }
+
+        $process->run(function ($type, $line) use ($output) {
+            $output->write($line);
+        });
+
+        if ($process->isSuccessful()) {
+            $output->writeln('<comment>Docker ready!</comment>');
+        }
+    }
+
+    /**
+     * Install Viper.
+     *
+     * @access protected
+     * @param  InputInterface  $input
+     * @param  OutputInterface $output
+     * @return void
+     */
+    protected function installViper(InputInterface $input, OutputInterface $output)
+    {
         $name = $input->getArgument('name');
 
         $directory = $name && $name !== '.' ? getcwd() . '/' . $name : getcwd();
@@ -76,12 +172,10 @@ class NewCommand extends Command
             $this->verifyApplicationDoesntExist($directory);
         }
 
-        $this->private_token = ($input->getOption('token')) ?? null;
-
         $output->writeln('<info>Installing application, please wait...</info>');
 
         $this
-            ->download($zipFile = $this->makeFilename(), $this->getVersion($input))
+            ->download('viper%2Fapp', $zipFile = $this->makeFilename(), $this->getVersion($input))
             ->extract($zipFile, $directory)
             ->prepareStorageDirectories($directory, $output)
             ->prepareWritableDirectories($directory, $output)
@@ -122,8 +216,60 @@ class NewCommand extends Command
         if ($process->isSuccessful()) {
             $output->writeln('<comment>Application ready!</comment>');
         }
+    }
 
-        return 0;
+    /**
+     * Install Vagrant.
+     *
+     * @access protected
+     * @param  InputInterface  $input
+     * @param  OutputInterface $output
+     * @return void
+     */
+    protected function installVagrant(InputInterface $input, OutputInterface $output)
+    {
+        $directory = getcwd() . DIRECTORY_SEPARATOR . 'virtual';
+
+        if (! $input->getOption('force')) {
+            $this->verifyApplicationDoesntExist($directory);
+        }
+
+        $output->writeln('<info>Installing Vagrant, please wait...</info>');
+
+        $this
+            ->download('viper%2Fvagrant', $zipFile = $this->makeFilename(), $this->getVersion($input))
+            ->extract($zipFile, $directory)
+            ->cleanUp($zipFile);
+
+        $commands = [
+            'cp -rp config.example.yml config.yml',
+        ];
+
+        if ($input->getOption('no-ansi')) {
+            $commands = array_map(function ($value) {
+                return $value . ' --no-ansi';
+            }, $commands);
+        }
+
+        if ($input->getOption('quiet')) {
+            $commands = array_map(function ($value) {
+                return $value . ' --quiet';
+            }, $commands);
+        }
+
+        $process = Process::fromShellCommandline(implode(' && ', $commands), $directory, null, null, null);
+
+        if ('\\' !== DIRECTORY_SEPARATOR && file_exists('/dev/tty') && is_readable('/dev/tty')) {
+            $process->setTty(true);
+        }
+
+        $process->run(function ($type, $line) use ($output) {
+            $output->write($line);
+        });
+
+        if ($process->isSuccessful()) {
+            $output->writeln('<comment>Vagrant ready!</comment>');
+        }
     }
 
     /**
@@ -155,12 +301,14 @@ class NewCommand extends Command
      * Download the temporary Zip to the given file.
      *
      * @access protected
-     * @param  string $zipFile  Zip file
-     * @param  string $version  Version
+     * @param  string $endpoint  API endpoint
+     * @param  string $zipFile   Zip file
+     * @param  string $version   Version
      * @return NewCommand
      */
-    protected function download($zipFile, $version = 'master'): NewCommand
+    protected function download($project, $zipFile, $version = 'master'): NewCommand
     {
+        // @todo
         //switch ($version) {
         //    case 'develop':
         //        $version = 'latest-develop.zip';
@@ -173,7 +321,7 @@ class NewCommand extends Command
         //        break;
         //}
 
-        $url = 'https://viper-lab.com/api/v4/projects/viper%2Fapp/repository/archive.zip?sha=' . $version;
+        $url = 'https://viper-lab.com/api/v4/projects/' . $project . '/repository/archive.zip?sha=' . $version;
 
         $options = [];
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env php
 <?php
 
-define('APP_BASE', __DIR__);
+define('BIN_BASE', __DIR__);
 
-if (file_exists(APP_BASE . '/../../../autoload.php')) {
-    require APP_BASE . '/../../../autoload.php';
+if (file_exists(BIN_BASE . '/../../../autoload.php')) {
+    require BIN_BASE . '/../../../autoload.php';
 } else {
-    require APP_BASE . '/../vendor/autoload.php';
+    require BIN_BASE . '/../vendor/autoload.php';
 }
 
 use Viper\Installer\Console\NewCommand;
