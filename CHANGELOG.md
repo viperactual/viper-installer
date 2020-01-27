@@ -1,14 +1,7 @@
 # Release Notes
 
-
-## [v2.0.1 (2019-10-19)](#)
-
-### Added
-- Create a new project in the current directory using "viper new ."
-- Added an alias to the `--force` option
-
-
-## [v2.0.0 (2018-12-07)](#)
+## [v0.1.0 (2020-01-01)](#)
 
 ### Added
+- Created plugin.
 - Uploaded to packagist.org
